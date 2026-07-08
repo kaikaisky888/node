@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>鉴权中转 - B Site</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .glass { background: rgba(255,255,255,0.03); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.08); }
+    </style>
+</head>
+<body class="bg-[#0a0a0f] text-gray-100 min-h-screen flex items-center justify-center font-sans">
+    <div class="text-center px-4">
+        <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-yellow-500 to-orange-600 flex items-center justify-center mb-4">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+            </svg>
+        </div>
+        <h1 class="text-xl font-bold text-white mb-2">鉴权中转层</h1>
+        <p class="text-gray-500 text-sm mb-6">B站负责全量拦截、IP限流、签名校验和Token签发</p>
+        
+        <div class="glass rounded-xl p-4 max-w-sm mx-auto text-left">
+            <h3 class="text-sm font-medium text-gray-300 mb-3">网关功能</h3>
+            <ul class="space-y-2 text-xs text-gray-400">
+                <li class="flex items-center gap-2">
+                    <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                    IP 黑名单拦截
+                </li>
+                <li class="flex items-center gap-2">
+                    <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                    60秒固定窗口限流 (30次/分钟)
+                </li>
+                <li class="flex items-center gap-2">
+                    <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                    ECC P-256 签名校验
+                </li>
+                <li class="flex items-center gap-2">
+                    <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                    一次性 Token 签发 (5分钟有效)
+                </li>
+                <li class="flex items-center gap-2">
+                    <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                    白名单 IP 免限流
+                </li>
+            </ul>
+        </div>
+
+        <div class="mt-6">
+            <a href="/c/" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 text-sm text-gray-300 hover:bg-white/10 transition-colors">
+                前往授权入口 (C站)
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                </svg>
+            </a>
+        </div>
+    </div>
+</body>
+</html>

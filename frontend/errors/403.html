@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>403 - Access Denied</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes fade-in { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fade-in 0.6s ease-out; }
+        @keyframes pulse-slow { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+        .pulse-slow { animation: pulse-slow 3s ease-in-out infinite; }
+    </style>
+</head>
+<body class="bg-[#0a0a0f] text-gray-100 min-h-screen flex items-center justify-center font-sans">
+    <div class="text-center px-6 fade-in">
+        <div class="relative inline-block mb-8">
+            <div class="w-24 h-24 rounded-3xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                <svg class="w-12 h-12 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                </svg>
+            </div>
+            <div class="absolute -top-2 -right-2 w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center pulse-slow">
+                <span class="text-red-400 font-bold text-xs">403</span>
+            </div>
+        </div>
+        <h1 class="text-3xl font-bold text-white mb-3">Access Denied</h1>
+        <p class="text-gray-400 mb-2">您没有权限直接访问此页面</p>
+        <p class="text-gray-500 text-sm mb-8">此站点需要通过安全授权通道访问。请前往授权中心完成身份验证。</p>
+        <div class="flex items-center justify-center gap-4">
+            <a href="/c/" class="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-medium text-sm hover:from-emerald-600 hover:to-teal-700 transition-all shadow-lg shadow-emerald-500/20">
+                前往授权中心
+            </a>
+        </div>
+        <div class="mt-12 text-xs text-gray-600">
+            <p>Security Gateway: Nginx + Lua | Auth Chain: C → B → A</p>
+        </div>
+    </div>
+</body>
+</html>

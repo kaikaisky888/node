@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>429 - Too Many Requests</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes fade-in { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fade-in 0.6s ease-out; }
+        @keyframes countdown { from { stroke-dashoffset: 0; } to { stroke-dashoffset: 283; } }
+    </style>
+</head>
+<body class="bg-[#0a0a0f] text-gray-100 min-h-screen flex items-center justify-center font-sans">
+    <div class="text-center px-6 fade-in">
+        <div class="relative inline-block mb-8">
+            <div class="w-24 h-24 rounded-3xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center">
+                <svg class="w-12 h-12 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <div class="absolute -top-2 -right-2 w-8 h-8 rounded-lg bg-yellow-500/20 flex items-center justify-center">
+                <span class="text-yellow-400 font-bold text-xs">429</span>
+            </div>
+        </div>
+        <h1 class="text-3xl font-bold text-white mb-3">请求过于频繁</h1>
+        <p class="text-gray-400 mb-2">您的 IP 地址已被临时限流</p>
+        <p class="text-gray-500 text-sm mb-8">
+            安全策略检测到短时间内请求过多，请在 <span id="countdown" class="text-yellow-400 font-mono font-semibold">60</span> 秒后重试。
+        </p>
+        <div class="flex items-center justify-center gap-4">
+            <button onclick="location.reload()" class="px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 font-medium text-sm hover:bg-white/10 transition-all">
+                刷新页面
+            </button>
+            <a href="/c/" class="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-medium text-sm hover:from-emerald-600 hover:to-teal-700 transition-all shadow-lg shadow-emerald-500/20">
+                返回授权中心
+            </a>
+        </div>
+        <div class="mt-12 text-xs text-gray-600">
+            <p>Rate Limit: 30 requests / 60 seconds per IP</p>
+        </div>
+    </div>
+    <script>
+        let seconds = 60;
+        const el = document.getElementById('countdown');
+        const timer = setInterval(() => {
+            seconds--;
+            el.textContent = seconds;
+            if (seconds <= 0) {
+                clearInterval(timer);
+                location.reload();
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

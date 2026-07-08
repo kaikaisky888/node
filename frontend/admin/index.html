@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管控中心 - Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .glass { background: rgba(255,255,255,0.03); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.08); }
+        @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fade-in 0.4s ease-out; }
+        .tab-active { background: rgba(255,255,255,0.08); color: white; }
+        .tab-inactive { color: #6b7280; }
+        .tab-inactive:hover { color: #9ca3af; }
+        .node-ok { color: #34d399; }
+        .node-warn { color: #fbbf24; }
+        .node-err { color: #f87171; }
+        @keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
+        .toast { position: fixed; top: 20px; right: 20px; z-index: 9999; }
+    </style>
+</head>
+<body class="bg-[#0a0a0f] text-gray-100 min-h-screen font-sans">
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast"></div>
+
+    <!-- Header -->
+    <nav class="border-b border-white/5 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                </div>
+                <span class="font-semibold text-white">管控中心</span>
+                <span class="text-xs px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/20">Admin</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <label class="flex items-center gap-2 text-xs text-gray-500 cursor-pointer">
+                        <input id="auto-refresh" type="checkbox" checked class="w-3.5 h-3.5 rounded border-gray-600 bg-gray-800 text-emerald-500 focus:ring-0 focus:ring-offset-0">
+                        自动刷新 (30s)
+                    </label>
+                </div>
+                <div id="connection-status" class="flex items-center gap-1.5 text-xs">
+                    <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-dot"></div>
+                    <span class="text-gray-500">在线</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-6 py-8">
+        <!-- Tabs -->
+        <div class="flex gap-1 mb-6 bg-white/5 rounded-xl p-1 w-fit flex-wrap">
+            <button class="tab-btn tab-active px-4 py-2 rounded-lg text-sm transition-all" data-tab="dashboard">仪表盘</button>
+            <button class="tab-btn tab-inactive px-4 py-2 rounded-lg text-sm transition-all" data-tab="blacklist">黑名单</button>
+            <button class="tab-btn tab-inactive px-4 py-2 rounded-lg text-sm transition-all" data-tab="whitelist">白名单</button>
+            <button class="tab-btn tab-inactive px-4 py-2 rounded-lg text-sm transition-all" data-tab="sessions">会话管理</button>
+            <button class="tab-btn tab-inactive px-4 py-2 rounded-lg text-sm transition-all" data-tab="config">系统配置</button>
+            <button class="tab-btn tab-inactive px-4 py-2 rounded-lg text-sm transition-all" data-tab="diagnostics">全链路诊断</button>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div id="tab-dashboard" class="tab-content fade-in">
+            <!-- Node Status -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="glass rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs text-gray-500">API 网关</span>
+                        <div id="node-nginx" class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-gray-600"></div><span class="text-xs text-gray-500">检测中</span></div>
+                    </div>
+                    <p class="text-sm text-gray-400">Express + Middleware</p>
+                    <p class="text-xs text-gray-600 mt-1">Port: 5000</p>
+                </div>
+                <div class="glass rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs text-gray-500">鉴权服务</span>
+                        <div id="node-php" class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-gray-600"></div><span class="text-xs text-gray-500">检测中</span></div>
+                    </div>
+                    <p class="text-sm text-gray-400">Node.js + OpenSSL</p>
+                    <p class="text-xs text-gray-600 mt-1">ECDSA P-256</p>
+                </div>
+                <div class="glass rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs text-gray-500">数据存储</span>
+                        <div id="node-redis" class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-gray-600"></div><span class="text-xs text-gray-500">检测中</span></div>
+                    </div>
+                    <p id="redis-version" class="text-sm text-gray-400">Memory Store</p>
+                    <p id="redis-memory" class="text-xs text-gray-600 mt-1">Heap: --</p>
+                </div>
+            </div>
+
+            <!-- Metrics -->
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                <div class="glass rounded-xl p-4">
+                    <p class="text-xs text-gray-500 mb-1">活跃会话</p>
+                    <p id="stat-sessions" class="text-2xl font-bold text-blue-400">--</p>
+                </div>
+                <div class="glass rounded-xl p-4">
+                    <p class="text-xs text-gray-500 mb-1">待用 Token</p>
+                    <p id="stat-tokens" class="text-2xl font-bold text-yellow-400">--</p>
+                </div>
+                <div class="glass rounded-xl p-4">
+                    <p class="text-xs text-gray-500 mb-1">黑名单 IP</p>
+                    <p id="stat-black" class="text-2xl font-bold text-red-400">--</p>
+                </div>
+                <div class="glass rounded-xl p-4">
+                    <p class="text-xs text-gray-500 mb-1">白名单 IP</p>
+                    <p id="stat-white" class="text-2xl font-bold text-emerald-400">--</p>
+                </div>
+                <div class="glass rounded-xl p-4">
+                    <p class="text-xs text-gray-500 mb-1">Redis Keys</p>
+                    <p id="stat-keys" class="text-2xl font-bold text-purple-400">--</p>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="glass rounded-xl p-4">
+                <h3 class="text-sm font-medium text-gray-300 mb-3">快速操作</h3>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="runDiagnostics()" class="px-3 py-2 rounded-lg bg-blue-500/10 text-blue-400 text-xs hover:bg-blue-500/20 transition-colors">一键巡检</button>
+                    <button onclick="clearExpiredSessions()" class="px-3 py-2 rounded-lg bg-yellow-500/10 text-yellow-400 text-xs hover:bg-yellow-500/20 transition-colors">清空过期会话</button>
+                    <button onclick="loadDashboard()" class="px-3 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs hover:bg-emerald-500/20 transition-colors">刷新数据</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Blacklist Tab -->
+        <div id="tab-blacklist" class="tab-content hidden fade-in">
+            <div class="glass rounded-xl p-4 mb-4">
+                <div class="flex gap-2 mb-3">
+                    <input id="black-ip-input" type="text" placeholder="输入 IP 地址" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50">
+                    <button id="add-black-btn" class="px-4 py-2 bg-red-500/20 text-red-400 rounded-lg text-sm hover:bg-red-500/30 transition-colors">添加</button>
+                </div>
+                <div class="flex gap-2">
+                    <textarea id="black-batch-input" placeholder="批量添加 (每行一个 IP)" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 h-20 resize-none font-mono"></textarea>
+                    <button id="batch-black-btn" class="px-4 py-2 bg-red-500/10 text-red-400 rounded-lg text-xs hover:bg-red-500/20 transition-colors self-end h-8">批量添加</button>
+                </div>
+            </div>
+            <div class="glass rounded-xl p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-medium text-gray-300">黑名单列表</h3>
+                    <span id="black-count" class="text-xs text-gray-500">0 条</span>
+                </div>
+                <div id="blacklist-items" class="space-y-2"></div>
+            </div>
+        </div>
+
+        <!-- Whitelist Tab -->
+        <div id="tab-whitelist" class="tab-content hidden fade-in">
+            <div class="glass rounded-xl p-4 mb-4">
+                <div class="flex gap-2 mb-3">
+                    <input id="white-ip-input" type="text" placeholder="输入 IP 地址" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50">
+                    <button id="add-white-btn" class="px-4 py-2 bg-emerald-500/20 text-emerald-400 rounded-lg text-sm hover:bg-emerald-500/30 transition-colors">添加</button>
+                </div>
+                <div class="flex gap-2">
+                    <textarea id="white-batch-input" placeholder="批量添加 (每行一个 IP)" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 h-20 resize-none font-mono"></textarea>
+                    <button id="batch-white-btn" class="px-4 py-2 bg-emerald-500/10 text-emerald-400 rounded-lg text-xs hover:bg-emerald-500/20 transition-colors self-end h-8">批量添加</button>
+                </div>
+            </div>
+            <div class="glass rounded-xl p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-medium text-gray-300">白名单列表</h3>
+                    <span id="white-count" class="text-xs text-gray-500">0 条</span>
+                </div>
+                <div id="whitelist-items" class="space-y-2"></div>
+            </div>
+        </div>
+
+        <!-- Sessions Tab -->
+        <div id="tab-sessions" class="tab-content hidden fade-in">
+            <div class="glass rounded-xl p-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-medium text-gray-300">活跃会话</h3>
+                    <div class="flex gap-2">
+                        <button id="refresh-sessions-btn" class="px-3 py-1.5 rounded-lg bg-white/5 text-gray-400 text-xs hover:bg-white/10 transition-colors">刷新</button>
+                        <button id="clear-sessions-btn" class="px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 text-xs hover:bg-red-500/20 transition-colors">清空全部</button>
+                    </div>
+                </div>
+                <div id="sessions-list" class="space-y-2"></div>
+            </div>
+        </div>
+
+        <!-- Config Tab -->
+        <div id="tab-config" class="tab-content hidden fade-in">
+            <div class="glass rounded-xl p-4 mb-4">
+                <h3 class="text-sm font-medium text-gray-300 mb-4">预设配置</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block">限流阈值 (次/分钟)</label>
+                            <div class="flex gap-2">
+                                <input id="cfg-rate-limit" type="number" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/50">
+                                <button onclick="savePresetConfig('rate_limit_max', 'cfg-rate-limit')" class="px-3 py-2 bg-blue-500/20 text-blue-400 rounded-lg text-xs hover:bg-blue-500/30">保存</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block">限流窗口 (秒)</label>
+                            <div class="flex gap-2">
+                                <input id="cfg-rate-window" type="number" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/50">
+                                <button onclick="savePresetConfig('rate_limit_window', 'cfg-rate-window')" class="px-3 py-2 bg-blue-500/20 text-blue-400 rounded-lg text-xs hover:bg-blue-500/30">保存</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block">Token 有效期 (秒)</label>
+                            <div class="flex gap-2">
+                                <input id="cfg-token-ttl" type="number" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/50">
+                                <button onclick="savePresetConfig('token_ttl', 'cfg-token-ttl')" class="px-3 py-2 bg-blue-500/20 text-blue-400 rounded-lg text-xs hover:bg-blue-500/30">保存</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block">会话有效期 (秒)</label>
+                            <div class="flex gap-2">
+                                <input id="cfg-session-ttl" type="number" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/50">
+                                <button onclick="savePresetConfig('session_ttl', 'cfg-session-ttl')" class="px-3 py-2 bg-blue-500/20 text-blue-400 rounded-lg text-xs hover:bg-blue-500/30">保存</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block">指纹匹配模式</label>
+                            <div class="flex gap-2">
+                                <select id="cfg-fp-mode" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/50">
+                                    <option value="strict">严格匹配</option>
+                                    <option value="fuzzy">模糊匹配</option>
+                                    <option value="disabled">禁用</option>
+                                </select>
+                                <button onclick="savePresetConfig('fingerprint_mode', 'cfg-fp-mode', true)" class="px-3 py-2 bg-blue-500/20 text-blue-400 rounded-lg text-xs hover:bg-blue-500/30">保存</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block">自定义配置</label>
+                            <div class="flex gap-2">
+                                <input id="config-field" type="text" placeholder="字段名" class="w-1/3 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50">
+                                <input id="config-value" type="text" placeholder="值" class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50">
+                                <button id="save-config-btn" class="px-3 py-2 bg-blue-500/20 text-blue-400 rounded-lg text-xs hover:bg-blue-500/30">保存</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="glass rounded-xl p-4">
+                <h3 class="text-sm font-medium text-gray-300 mb-3">当前配置 (Redis Hash)</h3>
+                <div id="config-list" class="space-y-2"></div>
+            </div>
+        </div>
+
+        <!-- Diagnostics Tab -->
+        <div id="tab-diagnostics" class="tab-content hidden fade-in">
+            <div class="glass rounded-xl p-4 mb-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-medium text-gray-300">全链路诊断</h3>
+                    <div class="flex gap-2">
+                        <button onclick="runDiagnostics()" class="px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 text-xs hover:bg-blue-500/30 transition-colors">手动巡检</button>
+                    </div>
+                </div>
+                <div id="diag-results" class="space-y-3">
+                    <p class="text-sm text-gray-500">点击"手动巡检"开始诊断</p>
+                </div>
+            </div>
+            <div class="glass rounded-xl p-4">
+                <h3 class="text-sm font-medium text-gray-300 mb-3">诊断日志</h3>
+                <div id="diag-log" class="font-mono text-xs text-gray-400 space-y-1 max-h-60 overflow-y-auto"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        'use strict';
+
+        const API_BASE = '/api/admin';
+        let refreshTimer = null;
+
+        // ─── Toast ────────────────────────────────────────────
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const colors = { success: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400', error: 'bg-red-500/20 border-red-500/30 text-red-400', info: 'bg-blue-500/20 border-blue-500/30 text-blue-400' };
+            toast.className = `px-4 py-2 rounded-lg border ${colors[type]} text-sm mb-2 fade-in`;
+            toast.textContent = msg;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // ─── Tab Navigation ───────────────────────────────────
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('tab-active'); b.classList.add('tab-inactive'); });
+                btn.classList.remove('tab-inactive'); btn.classList.add('tab-active');
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+                const tab = document.getElementById(`tab-${btn.dataset.tab}`);
+                tab.classList.remove('hidden');
+                switchTab(btn.dataset.tab);
+            });
+        });
+
+        function switchTab(tab) {
+            switch(tab) {
+                case 'dashboard': loadDashboard(); break;
+                case 'blacklist': loadBlacklist(); break;
+                case 'whitelist': loadWhitelist(); break;
+                case 'sessions': loadSessions(); break;
+                case 'config': loadConfig(); break;
+                case 'diagnostics': break;
+            }
+        }
+
+        // ─── Dashboard ────────────────────────────────────────
+        async function loadDashboard() {
+            try {
+                const [diagResp, blackResp, whiteResp] = await Promise.all([
+                    fetch(`${API_BASE}/diagnostics`),
+                    fetch(`${API_BASE}/ip/black`),
+                    fetch(`${API_BASE}/ip/white`),
+                ]);
+                const diag = await diagResp.json();
+                const black = await blackResp.json();
+                const white = await whiteResp.json();
+
+                if (diag.success) {
+                    const d = diag.data;
+                    // Node status
+                    setNodeStatus('node-nginx', true, '运行中');
+                    setNodeStatus('node-php', true, '运行中');
+                    setNodeStatus('node-redis', d.store_connected, d.store_connected ? '运行中' : '断开');
+                    document.getElementById('redis-version').textContent = `Store: ${d.store_type}`;
+                    const heapMB = (d.memory?.heapUsed / 1024 / 1024).toFixed(1);
+                    document.getElementById('redis-memory').textContent = `Heap: ${heapMB} MB`;
+
+                    // Metrics
+                    document.getElementById('stat-sessions').textContent = d.sessions;
+                    document.getElementById('stat-tokens').textContent = d.once_tokens;
+                    document.getElementById('stat-black').textContent = d.blacklist_count;
+                    document.getElementById('stat-white').textContent = d.whitelist_count;
+                    document.getElementById('stat-keys').textContent = d.total_keys;
+                }
+            } catch (e) {
+                console.error('Dashboard load failed:', e);
+                setNodeStatus('node-nginx', false, '异常');
+                setNodeStatus('node-php', false, '异常');
+                setNodeStatus('node-redis', false, '异常');
+            }
+        }
+
+        function setNodeStatus(id, ok, text) {
+            const el = document.getElementById(id);
+            const color = ok ? 'bg-emerald-500' : 'bg-red-500';
+            const textColor = ok ? 'text-emerald-400' : 'text-red-400';
+            el.innerHTML = `<div class="w-2 h-2 rounded-full ${color} pulse-dot"></div><span class="text-xs ${textColor}">${text}</span>`;
+        }
+
+        // ─── Blacklist ────────────────────────────────────────
+        async function loadBlacklist() {
+            try {
+                const resp = await fetch(`${API_BASE}/ip/black`);
+                const data = await resp.json();
+                const container = document.getElementById('blacklist-items');
+                document.getElementById('black-count').textContent = `${data.data.length} 条`;
+                if (data.success && data.data.length > 0) {
+                    container.innerHTML = data.data.map(ip => `
+                        <div class="flex items-center justify-between py-2 px-3 rounded-lg bg-white/5">
+                            <span class="font-mono text-sm text-gray-300">${ip}</span>
+                            <button class="remove-black-btn text-xs text-red-400 hover:text-red-300" data-ip="${ip}">移除</button>
+                        </div>
+                    `).join('');
+                    container.querySelectorAll('.remove-black-btn').forEach(btn => {
+                        btn.addEventListener('click', () => removeIP('black', btn.dataset.ip));
+                    });
+                } else {
+                    container.innerHTML = '<p class="text-sm text-gray-500">暂无黑名单 IP</p>';
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        document.getElementById('add-black-btn').addEventListener('click', async () => {
+            const ip = document.getElementById('black-ip-input').value.trim();
+            if (!ip) return;
+            await addIP('black', ip);
+            document.getElementById('black-ip-input').value = '';
+        });
+
+        document.getElementById('batch-black-btn').addEventListener('click', async () => {
+            const text = document.getElementById('black-batch-input').value.trim();
+            if (!text) return;
+            const ips = text.split('\n').map(s => s.trim()).filter(Boolean);
+            for (const ip of ips) { await addIP('black', ip); }
+            document.getElementById('black-batch-input').value = '';
+            loadBlacklist();
+            showToast(`已添加 ${ips.length} 个 IP 到黑名单`);
+        });
+
+        // ─── Whitelist ────────────────────────────────────────
+        async function loadWhitelist() {
+            try {
+                const resp = await fetch(`${API_BASE}/ip/white`);
+                const data = await resp.json();
+                const container = document.getElementById('whitelist-items');
+                document.getElementById('white-count').textContent = `${data.data.length} 条`;
+                if (data.success && data.data.length > 0) {
+                    container.innerHTML = data.data.map(ip => `
+                        <div class="flex items-center justify-between py-2 px-3 rounded-lg bg-white/5">
+                            <span class="font-mono text-sm text-gray-300">${ip}</span>
+                            <button class="remove-white-btn text-xs text-emerald-400 hover:text-emerald-300" data-ip="${ip}">移除</button>
+                        </div>
+                    `).join('');
+                    container.querySelectorAll('.remove-white-btn').forEach(btn => {
+                        btn.addEventListener('click', () => removeIP('white', btn.dataset.ip));
+                    });
+                } else {
+                    container.innerHTML = '<p class="text-sm text-gray-500">暂无白名单 IP</p>';
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        document.getElementById('add-white-btn').addEventListener('click', async () => {
+            const ip = document.getElementById('white-ip-input').value.trim();
+            if (!ip) return;
+            await addIP('white', ip);
+            document.getElementById('white-ip-input').value = '';
+        });
+
+        document.getElementById('batch-white-btn').addEventListener('click', async () => {
+            const text = document.getElementById('white-batch-input').value.trim();
+            if (!text) return;
+            const ips = text.split('\n').map(s => s.trim()).filter(Boolean);
+            for (const ip of ips) { await addIP('white', ip); }
+            document.getElementById('white-batch-input').value = '';
+            loadWhitelist();
+            showToast(`已添加 ${ips.length} 个 IP 到白名单`);
+        });
+
+        async function addIP(type, ip) {
+            const endpoint = type === 'black' ? 'black' : 'white';
+            await fetch(`${API_BASE}/ip/${endpoint}`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ip }),
+            });
+            showToast(`已添加 ${ip} 到${type === 'black' ? '黑' : '白'}名单`);
+            if (type === 'black') loadBlacklist(); else loadWhitelist();
+        }
+
+        async function removeIP(type, ip) {
+            const endpoint = type === 'black' ? 'black' : 'white';
+            await fetch(`${API_BASE}/ip/${endpoint}`, {
+                method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ip }),
+            });
+            showToast(`已移除 ${ip}`, 'info');
+            if (type === 'black') loadBlacklist(); else loadWhitelist();
+        }
+
+        // ─── Sessions ─────────────────────────────────────────
+        async function loadSessions() {
+            try {
+                const resp = await fetch(`${API_BASE}/sessions`);
+                const data = await resp.json();
+                const container = document.getElementById('sessions-list');
+                if (data.success && data.data.length > 0) {
+                    container.innerHTML = data.data.map(s => `
+                        <div class="flex items-center justify-between py-3 px-4 rounded-lg bg-white/5">
+                            <div class="flex-1 min-w-0">
+                                <p class="font-mono text-xs text-gray-300 truncate">${s._id ? s._id.substring(0, 20) + '...' : '--'}</p>
+                                <div class="flex flex-wrap gap-3 mt-1">
+                                    <span class="text-xs text-gray-500">FP: ${(s.fingerprint || '--').substring(0, 12)}...</span>
+                                    <span class="text-xs text-gray-500">IP: ${s.ip || '--'}</span>
+                                    <span class="text-xs text-gray-500">TTL: ${s._ttl || 0}s</span>
+                                    <span class="text-xs text-gray-500">Created: ${s.created_at ? new Date(s.created_at * 1000).toLocaleTimeString() : '--'}</span>
+                                </div>
+                            </div>
+                            <button class="destroy-session-btn text-xs text-red-400 hover:text-red-300 ml-4 shrink-0" data-id="${s._id}">强制下线</button>
+                        </div>
+                    `).join('');
+                    container.querySelectorAll('.destroy-session-btn').forEach(btn => {
+                        btn.addEventListener('click', () => destroySession(btn.dataset.id));
+                    });
+                } else {
+                    container.innerHTML = '<p class="text-sm text-gray-500">暂无活跃会话</p>';
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        document.getElementById('refresh-sessions-btn').addEventListener('click', loadSessions);
+        document.getElementById('clear-sessions-btn').addEventListener('click', async () => {
+            if (!confirm('确定要清空所有会话吗？')) return;
+            await fetch(`${API_BASE}/sessions`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ all: true }) });
+            showToast('已清空所有会话', 'info');
+            loadSessions();
+        });
+
+        async function destroySession(id) {
+            await fetch(`${API_BASE}/sessions`, {
+                method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ session_id: id }),
+            });
+            showToast('会话已销毁', 'info');
+            loadSessions();
+        }
+
+        // ─── Config ───────────────────────────────────────────
+        async function loadConfig() {
+            try {
+                const resp = await fetch(`${API_BASE}/config`);
+                const data = await resp.json();
+                const container = document.getElementById('config-list');
+                if (data.success && Object.keys(data.data).length > 0) {
+                    container.innerHTML = Object.entries(data.data).map(([k, v]) => `
+                        <div class="flex items-center justify-between py-2 px-3 rounded-lg bg-white/5">
+                            <span class="text-sm text-gray-300 font-mono">${k}</span>
+                            <span class="text-sm text-gray-400">${v}</span>
+                        </div>
+                    `).join('');
+                    // Pre-fill preset inputs
+                    const d = data.data;
+                    if (d.rate_limit_max) document.getElementById('cfg-rate-limit').value = d.rate_limit_max;
+                    if (d.rate_limit_window) document.getElementById('cfg-rate-window').value = d.rate_limit_window;
+                    if (d.token_ttl) document.getElementById('cfg-token-ttl').value = d.token_ttl;
+                    if (d.session_ttl) document.getElementById('cfg-session-ttl').value = d.session_ttl;
+                    if (d.fingerprint_mode) document.getElementById('cfg-fp-mode').value = d.fingerprint_mode;
+                } else {
+                    container.innerHTML = '<p class="text-sm text-gray-500">暂无自定义配置（使用默认值）</p>';
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        document.getElementById('save-config-btn').addEventListener('click', async () => {
+            const field = document.getElementById('config-field').value.trim();
+            const value = document.getElementById('config-value').value.trim();
+            if (!field) return;
+            await fetch(`${API_BASE}/config`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ field, value }),
+            });
+            document.getElementById('config-field').value = '';
+            document.getElementById('config-value').value = '';
+            showToast(`配置 ${field} 已保存`);
+            loadConfig();
+        });
+
+        window.savePresetConfig = async function(field, inputId, isSelect = false) {
+            const el = document.getElementById(inputId);
+            const value = isSelect ? el.value : el.value.trim();
+            if (!value) return;
+            await fetch(`${API_BASE}/config`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ field, value }),
+            });
+            showToast(`配置 ${field} = ${value} 已保存`);
+            loadConfig();
+        };
+
+        // ─── Diagnostics ──────────────────────────────────────
+        window.runDiagnostics = async function() {
+            const results = document.getElementById('diag-results');
+            const logEl = document.getElementById('diag-log');
+            results.innerHTML = '<p class="text-sm text-yellow-400">正在诊断...</p>';
+            logEl.innerHTML = '';
+
+            function diagLog(msg, type = 'info') {
+                const time = new Date().toLocaleTimeString('en', {hour12: false});
+                const colors = { info: 'text-gray-400', success: 'text-emerald-400', warn: 'text-yellow-400', error: 'text-red-400' };
+                logEl.innerHTML += `<div class="${colors[type]}">[${time}] ${msg}</div>`;
+                logEl.scrollTop = logEl.scrollHeight;
+            }
+
+            const checks = [];
+
+            // Check 1: API Gateway (Express)
+            diagLog('Checking API Gateway...', 'info');
+            try {
+                const r = await fetch('/health');
+                const d = await r.json();
+                checks.push({ name: 'API 网关', ok: r.ok && d.success, detail: d.success ? `Express OK (${d.data.store})` : 'Failed' });
+                diagLog(`Gateway: ${d.success ? 'OK' : 'FAIL'}`, d.success ? 'success' : 'error');
+            } catch (e) {
+                checks.push({ name: 'API 网关', ok: false, detail: 'Connection failed' });
+                diagLog(`Gateway: FAIL - ${e.message}`, 'error');
+            }
+
+            // Check 2: Auth Service
+            diagLog('Checking Auth Service...', 'info');
+            try {
+                const r = await fetch('/api/auth/health');
+                const d = await r.json();
+                checks.push({ name: '鉴权服务', ok: r.ok && d.success, detail: d.success ? `Auth OK (Store: ${d.data.store})` : 'Failed' });
+                diagLog(`Auth: ${d.success ? 'OK' : 'FAIL'} (Store: ${d.data.store})`, d.success ? 'success' : 'error');
+            } catch (e) {
+                checks.push({ name: '鉴权服务', ok: false, detail: 'Connection failed' });
+                diagLog(`Auth: FAIL - ${e.message}`, 'error');
+            }
+
+            // Check 3: Memory Store
+            diagLog('Checking Memory Store...', 'info');
+            try {
+                const r = await fetch(`${API_BASE}/diagnostics`);
+                const d = await r.json();
+                const heapMB = (d.data.memory?.heapUsed / 1024 / 1024).toFixed(1);
+                checks.push({ name: '数据存储', ok: d.success && d.data.store_connected, detail: d.data.store_connected ? `${d.data.store_type} (${heapMB} MB heap)` : 'Disconnected' });
+                diagLog(`Store: ${d.data.store_connected ? 'OK' : 'FAIL'} (${d.data.store_type}, ${heapMB} MB)`, d.data.store_connected ? 'success' : 'error');
+            } catch (e) {
+                checks.push({ name: '数据存储', ok: false, detail: 'Connection failed' });
+                diagLog(`Store: FAIL - ${e.message}`, 'error');
+            }
+
+            // Check 4: C Site
+            diagLog('Checking C Site...', 'info');
+            try {
+                const r = await fetch('/c/');
+                checks.push({ name: 'C站 (授权入口)', ok: r.ok, detail: r.ok ? 'Accessible' : `HTTP ${r.status}` });
+                diagLog(`C Site: ${r.ok ? 'OK' : 'FAIL'}`, r.ok ? 'success' : 'error');
+            } catch (e) {
+                checks.push({ name: 'C站 (授权入口)', ok: false, detail: 'Connection failed' });
+                diagLog(`C Site: FAIL - ${e.message}`, 'error');
+            }
+
+            // Check 5: A Site (should return 403 without session)
+            diagLog('Checking A Site (expect 403)...', 'info');
+            try {
+                const r = await fetch('/a/');
+                const is403 = r.status === 403;
+                checks.push({ name: 'A站 (裸访拦截)', ok: is403, detail: is403 ? '403 Blocked (correct)' : `HTTP ${r.status} (unexpected)` });
+                diagLog(`A Site: ${is403 ? '403 (correct)' : `${r.status} (unexpected)`}`, is403 ? 'success' : 'warn');
+            } catch (e) {
+                checks.push({ name: 'A站 (裸访拦截)', ok: false, detail: 'Connection failed' });
+                diagLog(`A Site: FAIL - ${e.message}`, 'error');
+            }
+
+            // Render results
+            results.innerHTML = checks.map(c => `
+                <div class="flex items-center justify-between py-2 px-3 rounded-lg ${c.ok ? 'bg-emerald-500/5' : 'bg-red-500/5'}">
+                    <div class="flex items-center gap-2">
+                        <div class="w-2 h-2 rounded-full ${c.ok ? 'bg-emerald-500' : 'bg-red-500'}"></div>
+                        <span class="text-sm ${c.ok ? 'text-gray-300' : 'text-red-400'}">${c.name}</span>
+                    </div>
+                    <span class="text-xs ${c.ok ? 'text-gray-500' : 'text-red-400'}">${c.detail}</span>
+                </div>
+            `).join('');
+
+            const allOk = checks.every(c => c.ok);
+            diagLog(`Diagnostic complete: ${allOk ? 'ALL OK' : 'ISSUES FOUND'}`, allOk ? 'success' : 'warn');
+        };
+
+        window.clearExpiredSessions = async function() {
+            await fetch(`${API_BASE}/sessions`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ expired: true }) });
+            showToast('已清空过期会话', 'info');
+            loadDashboard();
+        };
+
+        // ─── Auto Refresh ─────────────────────────────────────
+        function startAutoRefresh() {
+            if (refreshTimer) clearInterval(refreshTimer);
+            refreshTimer = setInterval(() => {
+                if (!document.getElementById('auto-refresh').checked) return;
+                const activeTab = document.querySelector('.tab-active');
+                if (activeTab) switchTab(activeTab.dataset.tab);
+            }, 30000);
+        }
+
+        document.getElementById('auto-refresh').addEventListener('change', (e) => {
+            if (!e.target.checked && refreshTimer) {
+                clearInterval(refreshTimer);
+                refreshTimer = null;
+            } else {
+                startAutoRefresh();
+            }
+        });
+
+        // ─── Initial Load ─────────────────────────────────────
+        loadDashboard();
+        startAutoRefresh();
+    })();
+    </script>
+</body>
+</html>

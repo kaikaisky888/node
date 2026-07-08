@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>授权中心 - C Site</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes pulse-ring { 0% { transform: scale(0.8); opacity: 1; } 100% { transform: scale(1.4); opacity: 0; } }
+        .pulse-ring { animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite; }
+        @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fade-in 0.5s ease-out; }
+        .glass { background: rgba(255,255,255,0.03); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.08); }
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        .shimmer { background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.05) 50%, transparent 100%); background-size: 200% 100%; animation: shimmer 2s infinite; }
+        .step-done { color: #34d399; }
+        .step-active { color: #fbbf24; }
+        .step-pending { color: #4b5563; }
+    </style>
+</head>
+<body class="bg-[#0a0a0f] text-gray-100 min-h-screen flex items-center justify-center font-sans">
+    <div class="w-full max-w-lg px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-8 fade-in">
+            <div class="relative inline-block mb-4">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                </div>
+                <div class="absolute inset-0 rounded-2xl bg-emerald-500/20 pulse-ring"></div>
+            </div>
+            <h1 class="text-2xl font-bold text-white">安全授权中心</h1>
+            <p class="text-gray-500 text-sm mt-2">基于 ECC P-256 数字签名的身份认证</p>
+        </div>
+
+        <!-- Steps Progress -->
+        <div class="glass rounded-2xl p-5 mb-4 fade-in">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                    <div id="step1-icon" class="w-7 h-7 rounded-full border-2 border-gray-600 flex items-center justify-center text-xs font-bold step-pending">1</div>
+                    <span id="step1-text" class="text-xs text-gray-500">设备指纹</span>
+                </div>
+                <div class="flex-1 h-px bg-gray-700 mx-2"></div>
+                <div class="flex items-center gap-2">
+                    <div id="step2-icon" class="w-7 h-7 rounded-full border-2 border-gray-600 flex items-center justify-center text-xs font-bold step-pending">2</div>
+                    <span id="step2-text" class="text-xs text-gray-500">密钥生成</span>
+                </div>
+                <div class="flex-1 h-px bg-gray-700 mx-2"></div>
+                <div class="flex items-center gap-2">
+                    <div id="step3-icon" class="w-7 h-7 rounded-full border-2 border-gray-600 flex items-center justify-center text-xs font-bold step-pending">3</div>
+                    <span id="step3-text" class="text-xs text-gray-500">签名授权</span>
+                </div>
+            </div>
+            <div id="step-status" class="text-center">
+                <p class="text-sm text-gray-400">点击下方按钮开始授权流程</p>
+            </div>
+        </div>
+
+        <!-- Fingerprint Details (shown after collection) -->
+        <div id="fp-details" class="glass rounded-2xl p-5 mb-4 fade-in hidden">
+            <h3 class="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
+                <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                </svg>
+                设备指纹信息
+            </h3>
+            <div class="space-y-2 text-xs font-mono">
+                <div class="flex justify-between"><span class="text-gray-500">Hash</span><span id="fp-hash" class="text-emerald-400 truncate max-w-[200px]">--</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Canvas</span><span id="fp-canvas" class="text-gray-400 truncate max-w-[200px]">--</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">WebGL</span><span id="fp-webgl" class="text-gray-400 truncate max-w-[200px]">--</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Screen</span><span id="fp-screen" class="text-gray-400">--</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">UA</span><span id="fp-ua" class="text-gray-400 truncate max-w-[200px]">--</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Fonts</span><span id="fp-fonts" class="text-gray-400">--</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Timezone</span><span id="fp-tz" class="text-gray-400">--</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Cores</span><span id="fp-cores" class="text-gray-400">--</span></div>
+            </div>
+        </div>
+
+        <!-- Action Button -->
+        <div id="action-area" class="fade-in">
+            <button id="auth-btn" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-medium text-sm hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed">
+                开始授权
+            </button>
+        </div>
+
+        <!-- Success Area -->
+        <div id="success-area" class="mt-4 hidden">
+            <div class="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-4">
+                <div class="flex items-center gap-3">
+                    <svg class="w-6 h-6 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <div>
+                        <p class="text-sm font-medium text-emerald-400">授权成功</p>
+                        <p id="success-msg" class="text-xs text-gray-400 mt-1">正在跳转至业务站点...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Area -->
+        <div id="error-area" class="mt-4 hidden">
+            <div class="rounded-xl bg-red-500/10 border border-red-500/20 p-4">
+                <div class="flex items-start gap-3">
+                    <svg class="w-5 h-5 text-red-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                    </svg>
+                    <div>
+                        <p id="error-title" class="text-sm font-medium text-red-400">授权失败</p>
+                        <p id="error-msg" class="text-xs text-gray-400 mt-1"></p>
+                        <p id="error-code" class="text-xs text-gray-500 mt-1 font-mono"></p>
+                    </div>
+                </div>
+                <button id="retry-btn" class="mt-3 w-full py-2 rounded-lg bg-red-500/10 text-red-400 text-xs hover:bg-red-500/20 transition-colors hidden">
+                    重试
+                </button>
+            </div>
+        </div>
+
+        <!-- Log Output -->
+        <div id="log-panel" class="glass rounded-2xl p-4 mt-4 fade-in">
+            <div class="flex items-center gap-2 mb-3">
+                <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                <span class="text-xs text-gray-500 font-mono">SECURITY LOG</span>
+            </div>
+            <div id="log-output" class="font-mono text-xs text-gray-400 space-y-1 max-h-40 overflow-y-auto">
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-6 text-xs text-gray-600 fade-in">
+            <p>Auth Chain: C(授权) → B(签发) → A(业务) | ECC P-256 + SHA-256</p>
+        </div>
+    </div>
+
+    <script src="/c/fingerprint.js"></script>
+    <script>
+    (function() {
+        'use strict';
+
+        const authBtn = document.getElementById('auth-btn');
+        const retryBtn = document.getElementById('retry-btn');
+        const logOutput = document.getElementById('log-output');
+        const stepStatus = document.getElementById('step-status');
+        const fpDetails = document.getElementById('fp-details');
+        const successArea = document.getElementById('success-area');
+        const errorArea = document.getElementById('error-area');
+
+        function log(msg, type = 'info') {
+            const el = document.createElement('div');
+            const time = new Date().toLocaleTimeString('en', {hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'});
+            const colors = { info: 'text-gray-400', success: 'text-emerald-400', warn: 'text-yellow-400', error: 'text-red-400' };
+            el.className = colors[type] || colors.info;
+            el.textContent = `[${time}] ${msg}`;
+            logOutput.appendChild(el);
+            logOutput.scrollTop = logOutput.scrollHeight;
+        }
+
+        function setStep(n, state) {
+            // state: 'done', 'active', 'pending'
+            for (let i = 1; i <= 3; i++) {
+                const icon = document.getElementById(`step${i}-icon`);
+                const text = document.getElementById(`step${i}-text`);
+                if (i < n || (i === n && state === 'done')) {
+                    icon.className = 'w-7 h-7 rounded-full border-2 border-emerald-500 flex items-center justify-center text-xs font-bold step-done';
+                    icon.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>';
+                    text.className = 'text-xs text-emerald-400';
+                } else if (i === n && state === 'active') {
+                    icon.className = 'w-7 h-7 rounded-full border-2 border-yellow-500 flex items-center justify-center text-xs font-bold step-active';
+                    text.className = 'text-xs text-yellow-400';
+                } else {
+                    icon.className = 'w-7 h-7 rounded-full border-2 border-gray-600 flex items-center justify-center text-xs font-bold step-pending';
+                    icon.textContent = i;
+                    text.className = 'text-xs text-gray-500';
+                }
+            }
+        }
+
+        function showError(title, msg, code, showRetry = false) {
+            errorArea.classList.remove('hidden');
+            document.getElementById('error-title').textContent = title;
+            document.getElementById('error-msg').textContent = msg;
+            document.getElementById('error-code').textContent = code ? `Error Code: ${code}` : '';
+            retryBtn.classList.toggle('hidden', !showRetry);
+        }
+
+        function hideError() {
+            errorArea.classList.add('hidden');
+        }
+
+        function showFingerprintDetails(fp) {
+            fpDetails.classList.remove('hidden');
+            document.getElementById('fp-hash').textContent = fp.hash.substring(0, 20) + '...';
+            document.getElementById('fp-canvas').textContent = (fp.components.canvas || '--').substring(0, 24) + '...';
+            document.getElementById('fp-webgl').textContent = (fp.components.webgl || '--').substring(0, 24) + '...';
+            document.getElementById('fp-screen').textContent = fp.components.screen || '--';
+            document.getElementById('fp-ua').textContent = (fp.components.ua || '--').substring(0, 30) + '...';
+            document.getElementById('fp-fonts').textContent = `${(fp.components.fonts || '').split(',').length} fonts detected`;
+            document.getElementById('fp-tz').textContent = fp.components.tz || '--';
+            document.getElementById('fp-cores').textContent = fp.components.cores || '--';
+        }
+
+        async function startAuth() {
+            authBtn.disabled = true;
+            authBtn.textContent = '授权中...';
+            hideError();
+            successArea.classList.add('hidden');
+
+            try {
+                // ─── Step 1: Device Fingerprint ─────────────────
+                setStep(1, 'active');
+                stepStatus.innerHTML = '<p class="text-sm text-yellow-400">正在采集设备指纹...</p>';
+                log('Starting device fingerprint collection...', 'info');
+
+                let fingerprint;
+                try {
+                    fingerprint = await DeviceFingerprint.generate();
+                    log(`Fingerprint: ${fingerprint.hash.substring(0, 16)}...`, 'success');
+                    log(`Components: Canvas + WebGL + UA + Screen + Fonts + TZ`, 'info');
+                    showFingerprintDetails(fingerprint);
+                    setStep(1, 'done');
+                } catch (e) {
+                    log(`Fingerprint error: ${e.message}`, 'error');
+                    fingerprint = { hash: 'fallback-' + Date.now(), components: {} };
+                    setStep(1, 'done');
+                }
+
+                // ─── Step 2: ECC Key Pair Generation ────────────
+                await new Promise(r => setTimeout(r, 300));
+                setStep(2, 'active');
+                stepStatus.innerHTML = '<p class="text-sm text-yellow-400">正在生成 ECC P-256 密钥对...</p>';
+                log('Generating ECC P-256 key pair...', 'info');
+
+                let keyPair, pubKeyHex;
+                try {
+                    keyPair = await crypto.subtle.generateKey(
+                        { name: 'ECDSA', namedCurve: 'P-256' },
+                        true,
+                        ['sign', 'verify']
+                    );
+                    const pubKeyRaw = await crypto.subtle.exportKey('raw', keyPair.publicKey);
+                    pubKeyHex = Array.from(new Uint8Array(pubKeyRaw)).map(b => b.toString(16).padStart(2, '0')).join('');
+                    log(`Public key: ${pubKeyHex.substring(0, 24)}...`, 'success');
+                    log(`Key type: ECDSA P-256 (secp256r1)`, 'info');
+                    setStep(2, 'done');
+                } catch (e) {
+                    log(`Key generation error: ${e.message}`, 'error');
+                    showError('密钥生成失败', '您的浏览器不支持 Web Crypto API，请使用现代浏览器（Chrome/Firefox/Safari/Edge）。', 'CRYPTO_UNSUPPORTED');
+                    authBtn.disabled = false;
+                    authBtn.textContent = '重新授权';
+                    return;
+                }
+
+                // ─── Step 3: Sign & Request Token ───────────────
+                await new Promise(r => setTimeout(r, 300));
+                setStep(3, 'active');
+                stepStatus.innerHTML = '<p class="text-sm text-yellow-400">正在签名并请求授权...</p>';
+                log('Creating signed authorization request...', 'info');
+
+                const timestamp = Date.now().toString();
+                const nonce = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+                    .map(b => b.toString(16).padStart(2, '0')).join('');
+                
+                const signedMessage = `${timestamp}.${nonce}.${fingerprint.hash}`;
+                const encoder = new TextEncoder();
+                const msgData = encoder.encode(signedMessage);
+
+                let signature;
+                try {
+                    const sigRaw = await crypto.subtle.sign(
+                        { name: 'ECDSA', hash: 'SHA-256' },
+                        keyPair.privateKey,
+                        msgData
+                    );
+                    signature = btoa(String.fromCharCode(...new Uint8Array(sigRaw)))
+                        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+                    log(`Signature: ${signature.substring(0, 20)}...`, 'success');
+                } catch (e) {
+                    log(`Signing error: ${e.message}`, 'error');
+                    showError('签名失败', '无法对请求进行数字签名。', 'SIGN_FAILED');
+                    authBtn.disabled = false;
+                    authBtn.textContent = '重新授权';
+                    return;
+                }
+
+                // Send to B site for token generation
+                log('Sending signed request to auth gateway...', 'info');
+
+                let resp;
+                try {
+                    resp = await fetch('/api/auth/generate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            pub_key: pubKeyHex,
+                            timestamp: timestamp,
+                            nonce: nonce,
+                            fingerprint: fingerprint.hash,
+                            signature: signature,
+                        }),
+                    });
+                } catch (e) {
+                    log(`Network error: ${e.message}`, 'error');
+                    showError('网络错误', '无法连接到授权服务器，请检查网络连接。', 'NETWORK_ERROR', true);
+                    authBtn.disabled = false;
+                    authBtn.textContent = '重新授权';
+                    return;
+                }
+
+                const data = await resp.json();
+
+                if (!resp.ok || !data.success) {
+                    const status = resp.status;
+                    const errorMsg = data.error || 'Unknown error';
+                    log(`Auth error (${status}): ${errorMsg}`, 'error');
+
+                    if (status === 429) {
+                        showError('请求过于频繁', `您的 IP 已被临时限流，请在 ${data.retry_after || 60} 秒后重试。`, 'HTTP_429_RATE_LIMIT', true);
+                    } else if (status === 403) {
+                        if (errorMsg.includes('IP blocked')) {
+                            showError('IP 已被封禁', '您的 IP 地址已被加入黑名单，请联系管理员。', 'HTTP_403_BLACKLISTED');
+                        } else {
+                            showError('签名校验失败', 'ECC 签名验证未通过，请确保设备环境未被篡改。', 'HTTP_403_SIGNATURE_INVALID', true);
+                        }
+                    } else if (status === 400) {
+                        showError('请求参数错误', errorMsg, 'HTTP_400_BAD_REQUEST', true);
+                    } else {
+                        showError('授权失败', errorMsg, `HTTP_${status}`, true);
+                    }
+                    authBtn.disabled = false;
+                    authBtn.textContent = '重新授权';
+                    return;
+                }
+
+                log(`Token issued: ${data.data.token.substring(0, 20)}...`, 'success');
+                log(`Expires in: ${data.data.expires_in}s`, 'info');
+
+                // ─── Step 4: Verify Token ───────────────────────
+                log('Verifying token and establishing session...', 'info');
+                stepStatus.innerHTML = '<p class="text-sm text-yellow-400">正在建立安全会话...</p>';
+
+                const verifyResp = await fetch('/api/auth/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: data.data.token }),
+                });
+
+                const verifyData = await verifyResp.json();
+
+                if (!verifyResp.ok || !verifyData.success) {
+                    log(`Verify error: ${verifyData.error}`, 'error');
+                    showError('会话建立失败', verifyData.error || 'Token 核销失败，请重新授权。', 'VERIFY_FAILED', true);
+                    authBtn.disabled = false;
+                    authBtn.textContent = '重新授权';
+                    return;
+                }
+
+                // Success!
+                setStep(3, 'done');
+                log('Session established successfully!', 'success');
+                log(`Session ID: ${verifyData.data.session_id.substring(0, 16)}...`, 'success');
+
+                stepStatus.innerHTML = '<p class="text-sm text-emerald-400">授权完成，正在跳转...</p>';
+                successArea.classList.remove('hidden');
+                document.getElementById('success-msg').textContent = `会话有效期: ${verifyData.data.expires_in}s，即将跳转至业务站点。`;
+                document.getElementById('action-area').classList.add('hidden');
+
+                // Redirect to A site after 2 seconds
+                setTimeout(() => {
+                    window.location.href = '/a/';
+                }, 2000);
+
+            } catch (e) {
+                log(`Unexpected error: ${e.message}`, 'error');
+                showError('未知错误', e.message, 'UNEXPECTED', true);
+                authBtn.disabled = false;
+                authBtn.textContent = '重新授权';
+            }
+        }
+
+        authBtn.addEventListener('click', startAuth);
+        retryBtn.addEventListener('click', () => {
+            hideError();
+            startAuth();
+        });
+
+        log('Authorization center initialized.', 'info');
+        log('Click "开始授权" to begin the authentication flow.', 'info');
+    })();
+    </script>
+</body>
+</html>
