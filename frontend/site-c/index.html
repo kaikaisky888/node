@@ -289,7 +289,7 @@
 
                 let resp;
                 try {
-                    resp = await fetch('/api/auth/generate', {
+                    resp = await fetch('https://b.okok.cfd/api/auth/generate', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -340,9 +340,10 @@
                 log('Verifying token and establishing session...', 'info');
                 stepStatus.innerHTML = '<p class="text-sm text-yellow-400">正在建立安全会话...</p>';
 
-                const verifyResp = await fetch('/api/auth/verify', {
+                const verifyResp = await fetch('https://b.okok.cfd/api/auth/verify', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify({ token: data.data.token }),
                 });
 
@@ -368,7 +369,7 @@
 
                 // Redirect to A site after 2 seconds
                 setTimeout(() => {
-                    window.location.href = '/a/';
+                    window.location.href = 'https://a.okok.cfd/';
                 }, 2000);
 
             } catch (e) {

@@ -136,10 +136,11 @@ function handleVerify(string $method): void
     // Set session cookie
     $cookieParams = \AuthApp\Auth\SessionManager::getCookieParams();
     $cookieHeader = sprintf(
-        '%s=%s; Path=%s; Max-Age=%d; Secure; HttpOnly; SameSite=%s',
+        '%s=%s; Path=%s; Domain=%s; Max-Age=%d; Secure; HttpOnly; SameSite=%s',
         $cookieParams['name'],
         $session['session_id'],
         $cookieParams['path'],
+        $cookieParams['domain'],
         $cookieParams['max_age'],
         $cookieParams['samesite']
     );
@@ -218,9 +219,10 @@ function handleLogout(string $method): void
 
     // Clear cookie
     $clearCookie = sprintf(
-        '%s=; Path=%s; Max-Age=0; Secure; HttpOnly; SameSite=%s',
+        '%s=; Path=%s; Domain=%s; Max-Age=0; Secure; HttpOnly; SameSite=%s',
         $cookieParams['name'],
         $cookieParams['path'],
+        $cookieParams['domain'],
         $cookieParams['samesite']
     );
     header('Set-Cookie: ' . $clearCookie);

@@ -81,7 +81,7 @@ end
 -- Set secure cookie
 function _M.set_session_cookie(session_id)
     local cookie = string.format(
-        "auth_sid=%s; Path=/; Max-Age=86400; Secure; HttpOnly; SameSite=Strict",
+        "auth_sid=%s; Path=/; Domain=.okok.cfd; Max-Age=86400; Secure; HttpOnly; SameSite=None",
         session_id
     )
     ngx.header["Set-Cookie"] = cookie

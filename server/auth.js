@@ -138,7 +138,8 @@ router.post('/verify', (req, res) => {
   res.cookie('auth_session', sessionId, {
     httpOnly: true,
     secure: true,
-    sameSite: 'strict',
+    sameSite: 'none',
+    domain: '.okok.cfd',
     maxAge: sessionTtl * 1000,
     path: '/',
   });
@@ -210,7 +211,8 @@ router.post('/logout', (req, res) => {
   res.clearCookie('auth_session', {
     httpOnly: true,
     secure: true,
-    sameSite: 'strict',
+    sameSite: 'none',
+    domain: '.okok.cfd',
     path: '/',
   });
 

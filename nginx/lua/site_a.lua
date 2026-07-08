@@ -8,7 +8,7 @@ local auth = require "auth_common"
 local uri = ngx.var.uri
 
 -- Skip auth check for static assets
-if uri:match("^/a/.*%.(css|js|png|jpg|gif|ico|svg|woff|woff2|ttf)$") then
+if uri:match("%.(css|js|png|jpg|gif|ico|svg|woff|woff2|ttf)$") then
     return
 end
 
@@ -35,6 +35,6 @@ if f then
     ngx.say(f:read("*a"))
     f:close()
 else
-    ngx.say('<html><body><h1>403 Access Denied</h1><p>Please visit <a href="/c/">C Site</a> to authorize.</p></body></html>')
+    ngx.say('<html><body><h1>403 Access Denied</h1><p>Please visit <a href="https://c.okok.cfd/">C Site</a> to authorize.</p></body></html>')
 end
 ngx.exit(403)

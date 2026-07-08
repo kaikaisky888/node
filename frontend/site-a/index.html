@@ -209,7 +209,7 @@
 
         async function checkSession() {
             try {
-                const resp = await fetch('/api/auth/session', {
+                const resp = await fetch('https://b.okok.cfd/api/auth/session', {
                     credentials: 'include',
                 });
                 const data = await resp.json();
@@ -220,7 +220,7 @@
                     document.getElementById('auth-badge').className = 'text-xs px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20';
                     document.getElementById('auth-status').textContent = '会话无效';
                     document.getElementById('auth-status').className = 'text-lg font-semibold text-red-400';
-                    setTimeout(() => { window.location.href = '/c/'; }, 3000);
+                    setTimeout(() => { window.location.href = 'https://c.okok.cfd/'; }, 3000);
                     return;
                 }
 
@@ -251,7 +251,7 @@
             btn.textContent = '退出中...';
 
             try {
-                await fetch('/api/auth/logout', {
+                await fetch('https://b.okok.cfd/api/auth/logout', {
                     method: 'POST',
                     credentials: 'include',
                 });
@@ -260,9 +260,9 @@
             }
 
             // Clear cookie
-            document.cookie = 'auth_sid=; Path=/; Max-Age=0; Secure; SameSite=Strict';
+            document.cookie = 'auth_sid=; Path=/; Domain=.okok.cfd; Max-Age=0; Secure; SameSite=None';
             clearInterval(sessionCheckInterval);
-            window.location.href = '/c/';
+            window.location.href = 'https://c.okok.cfd/';
         });
 
         // Initial check

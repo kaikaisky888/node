@@ -91,6 +91,7 @@ class SessionManager
             'httponly'  => $config['session']['cookie_httponly'],
             'samesite' => $config['session']['cookie_samesite'],
             'max_age'  => $config['session']['ttl'],
+            'domain'   => $config['session']['cookie_domain'] ?? '',
         ];
     }
 }

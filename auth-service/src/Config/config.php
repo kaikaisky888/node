@@ -25,7 +25,8 @@ return [
         'cookie_path'    => '/',
         'cookie_secure'  => true,
         'cookie_httponly' => true,
-        'cookie_samesite' => 'Strict',
+        'cookie_samesite' => 'None',
+        'cookie_domain'  => '.okok.cfd',
     ],
 
     'rate_limit' => [
